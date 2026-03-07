@@ -13,6 +13,12 @@ interface DashboardProps {
 export default function Dashboard({ onAddCharacter, onNewProject, onEditProject }: DashboardProps) {
   const { user, characters, projects, deleteProject } = useApp();
 
+  const handleDeleteProject = (projectId: string) => {
+    const confirmed = window.confirm('このプロジェクトを削除しますか？この操作は元に戻せません。');
+    if (!confirmed) return;
+    deleteProject(projectId);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12 space-y-12 md:space-y-16">
       {/* Header */}
@@ -103,12 +109,14 @@ export default function Dashboard({ onAddCharacter, onNewProject, onEditProject 
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => onEditProject(proj)}
+                    aria-label="プロジェクトを編集"
                     className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white"
                   >
                     <Edit3 className="w-[18px] h-[18px]" />
                   </button>
                   <button
-                    onClick={() => deleteProject(proj.id)}
+                    onClick={() => handleDeleteProject(proj.id)}
+                    aria-label="プロジェクトを削除"
                     className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-red-500"
                   >
                     <Trash2 className="w-[18px] h-[18px]" />
