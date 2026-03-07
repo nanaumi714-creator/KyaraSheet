@@ -27,6 +27,8 @@ export default function CharacterRegistration({ onComplete, onCancel }: Characte
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.type !== 'image/png') return;
+      if (file.size > 8 * 1024 * 1024) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
         setImage(ev.target?.result as string);
@@ -61,7 +63,7 @@ export default function CharacterRegistration({ onComplete, onCancel }: Characte
     <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12">
       <div className="flex items-center justify-between mb-8 md:mb-12">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">キャラクター登録</h1>
-        <button onClick={onCancel} className="p-2 hover:bg-zinc-800 rounded-full">
+        <button onClick={onCancel} aria-label="キャラクター登録を閉じる" className="p-2 hover:bg-zinc-800 rounded-full">
           <X className="w-5 h-5 md:w-6 md:h-6" />
         </button>
       </div>

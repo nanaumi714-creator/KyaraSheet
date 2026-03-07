@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, Check, ChevronRight } from 'lucide-react';
+import { X, ChevronRight } from 'lucide-react';
 import { USE_CASES, MOODS, TEMPLATES } from '../constants';
 import { Template, UseCase, Mood } from '../types';
 
@@ -22,7 +22,7 @@ export default function TemplateSelector({ onSelect, onCancel }: TemplateSelecto
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-12">
       <div className="flex items-center justify-between mb-8 md:mb-12">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">テンプレート選択</h1>
-        <button onClick={onCancel} className="p-2 hover:bg-zinc-800 rounded-full">
+        <button onClick={onCancel} aria-label="テンプレート選択を閉じる" className="p-2 hover:bg-zinc-800 rounded-full">
           <X className="w-5 h-5 md:w-6 md:h-6" />
         </button>
       </div>
@@ -86,11 +86,11 @@ export default function TemplateSelector({ onSelect, onCancel }: TemplateSelecto
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {filteredTemplates.map((temp) => (
-              <motion.div
+              <motion.button
                 key={temp.id}
                 whileHover={{ y: -8 }}
                 onClick={() => onSelect(temp)}
-                className="group cursor-pointer bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden shadow-2xl"
+                className="group cursor-pointer bg-zinc-900 rounded-3xl border border-white/10 overflow-hidden shadow-2xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
               >
                 <div className="aspect-video bg-zinc-800 relative overflow-hidden">
                    {/* Mock Preview */}
@@ -120,7 +120,7 @@ export default function TemplateSelector({ onSelect, onCancel }: TemplateSelecto
                       </div>
                    </div>
                 </div>
-              </motion.div>
+              </motion.button>
             ))}
           </div>
         </main>

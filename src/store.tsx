@@ -1,5 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Character, Project, Plan } from './types';
+import { User, Character, Project } from './types';
+
+function safeParse<T>(raw: string | null, validate: (value: unknown) => value is T): T | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return validate(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 interface AppState {
   user: User | null;
@@ -23,13 +33,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     // Mock initial load
-    const savedChars = localStorage.getItem('vt_chars');
-    const savedProjs = localStorage.getItem('vt_projs');
-    const savedUser = localStorage.getItem('vt_user');
+    const savedChars = safeParse<Character[]>(
+      localStorage.getItem('vt_chars'),
+      (value): value is Character[] => Array.isArray(value),
+    );
+    const savedProjs = safeParse<Project[]>(
+      localStorage.getItem('vt_projs'),
+      (value): value is Project[] => Array.isArray(value),
+    );
+    const savedUser = safeParse<User>(
+      localStorage.getItem('vt_user'),
+      (value): value is User => typeof value === 'object' && value !== null,
+    );
 
-    if (savedChars) setCharacters(JSON.parse(savedChars));
-    if (savedProjs) setProjects(JSON.parse(savedProjs));
-    if (savedUser) setUser(JSON.parse(savedUser));
+    if (savedChars) {
+      setCharacters(savedChars);
+    } else {
+      localStorage.removeItem('vt_chars');
+    }
+
+    if (savedProjs) {
+      setProjects(savedProjs);
+    } else {
+      localStorage.removeItem('vt_projs');
+    }
+
+    if (savedUser) {
+      setUser(savedUser);
+    } else {
+      localStorage.removeItem('vt_user');
+    }
 
     setLoading(false);
   }, []);
