@@ -10,6 +10,7 @@ import {
 import { useApp } from '../store';
 import { Template, LayerConfig, Asset, Character } from '../types';
 import { ASSETS, EXPRESSIONS } from '../constants';
+import { generateBackground } from '../services/ai';
 
 interface EditorProps {
   template: Template;
@@ -26,10 +27,14 @@ const CanvasImage = ({ url, x, y, width, height, opacity = 1 }: any) => {
 export default function Editor({ template, projectId, onBack }: EditorProps) {
   const { characters, addProject, updateProject, projects, user } = useApp();
   const [config, setConfig] = useState<LayerConfig>(template.default_config);
-  const [activeTab, setActiveTab] = useState<'char' | 'bg' | 'eff' | 'text' | 'exp'>('char');
+  const [activeTab, setActiveTab] = useState<'char' | 'bg' | 'ai_bg' | 'eff' | 'text' | 'exp'>('char');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedCharId, setSelectedCharId] = useState<string>(characters[0]?.id || '');
   const [stageScale, setStageScale] = useState(0.5);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [generatedBackgrounds, setGeneratedBackgrounds] = useState<string[]>([]);
   const stageRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +120,26 @@ export default function Editor({ template, projectId, onBack }: EditorProps) {
 
   const expProps = getExpressionProps();
 
+  const handleGenerateBackground = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsGenerating(true);
+    setGenerationError(null);
+    try {
+      // Determine aspect ratio based on template size
+      const aspectRatio = template.size_w > template.size_h ? "16:9" : "9:16";
+      const base64Image = await generateBackground(aiPrompt, aspectRatio);
+      
+      setGeneratedBackgrounds(prev => [base64Image, ...prev]);
+      setConfig(prev => ({ ...prev, custom_background_url: base64Image }));
+      setAiPrompt('');
+    } catch (error) {
+      console.error("Failed to generate background:", error);
+      setGenerationError("背景の生成に失敗しました。時間をおいて再度お試しください。");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Toolbar */}
@@ -143,7 +168,8 @@ export default function Editor({ template, projectId, onBack }: EditorProps) {
           <TabButton active={activeTab === 'char'} onClick={() => { setActiveTab('char'); setIsSidebarOpen(true); }} icon={<UserIcon className="w-5 h-5 md:w-6 md:h-6" />} label="キャラ" />
           <TabButton active={activeTab === 'exp'} onClick={() => { setActiveTab('exp'); setIsSidebarOpen(true); }} icon={<Smile className="w-5 h-5 md:w-6 md:h-6" />} label="表情" />
           <TabButton active={activeTab === 'bg'} onClick={() => { setActiveTab('bg'); setIsSidebarOpen(true); }} icon={<ImageIcon className="w-5 h-5 md:w-6 md:h-6" />} label="背景" />
-          <TabButton active={activeTab === 'eff'} onClick={() => { setActiveTab('eff'); setIsSidebarOpen(true); }} icon={<Sparkles className="w-5 h-5 md:w-6 md:h-6" />} label="効果" />
+          <TabButton active={activeTab === 'ai_bg'} onClick={() => { setActiveTab('ai_bg'); setIsSidebarOpen(true); }} icon={<Sparkles className="w-5 h-5 md:w-6 md:h-6" />} label="AI背景" />
+          <TabButton active={activeTab === 'eff'} onClick={() => { setActiveTab('eff'); setIsSidebarOpen(true); }} icon={<Layers className="w-5 h-5 md:w-6 md:h-6" />} label="効果" />
           <TabButton active={activeTab === 'text'} onClick={() => { setActiveTab('text'); setIsSidebarOpen(true); }} icon={<Type className="w-5 h-5 md:w-6 md:h-6" />} label="文字" />
         </aside>
 
@@ -218,13 +244,79 @@ export default function Editor({ template, projectId, onBack }: EditorProps) {
                 {ASSETS.filter(a => a.type === 'background').map(asset => (
                   <button 
                     key={asset.id}
-                    onClick={() => setConfig({...config, background_id: asset.id})}
-                    className={`aspect-square rounded-xl border overflow-hidden transition-all ${config.background_id === asset.id ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900' : 'border-white/5'}`}
+                    onClick={() => setConfig({...config, background_id: asset.id, custom_background_url: undefined})}
+                    className={`aspect-square rounded-xl border overflow-hidden transition-all ${config.background_id === asset.id && !config.custom_background_url ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900' : 'border-white/5'}`}
                   >
                     <img src={asset.image_url} className="w-full h-full object-cover" alt="BG" />
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'ai_bg' && (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <h3 className="font-bold flex items-center gap-2"><Sparkles className="w-4 h-4 text-yellow-400" /> AI背景生成</h3>
+                <p className="text-xs text-zinc-400">プロンプトを入力して、配信にぴったりの背景を生成します。</p>
+              </div>
+              
+              <div className="space-y-3">
+                <textarea 
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="例: 夜のサイバーパンクな街並み、ネオンサイン"
+                  className="w-full h-24 bg-zinc-800 border border-white/10 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-white/20"
+                />
+                <div className="flex flex-wrap gap-2">
+                  {['🌸 桜の舞う教室', '🌃 サイバーパンク', '☕ おしゃれなカフェ', '🎮 ゲーミングルーム'].map(suggestion => (
+                    <button 
+                      key={suggestion}
+                      onClick={() => setAiPrompt(suggestion.replace(/^[^\s]+\s/, ''))}
+                      className="text-[10px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 rounded-full border border-white/5 transition-colors"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+                <button 
+                  onClick={handleGenerateBackground}
+                  disabled={isGenerating || !aiPrompt.trim()}
+                  className="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                >
+                  {isGenerating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                      生成中...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      背景を生成する
+                    </>
+                  )}
+                </button>
+                {generationError && (
+                  <p className="text-xs text-red-400 mt-2">{generationError}</p>
+                )}
+              </div>
+
+              {generatedBackgrounds.length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-white/10">
+                  <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">生成履歴</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {generatedBackgrounds.map((bgUrl, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={() => setConfig({...config, custom_background_url: bgUrl})}
+                        className={`aspect-video rounded-xl border overflow-hidden transition-all ${config.custom_background_url === bgUrl ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900' : 'border-white/5 hover:border-white/20'}`}
+                      >
+                        <img src={bgUrl} className="w-full h-full object-cover" alt="Generated BG" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -274,7 +366,7 @@ export default function Editor({ template, projectId, onBack }: EditorProps) {
               <Layer>
                 {/* Background */}
                 <CanvasImage 
-                  url={ASSETS.find(a => a.id === config.background_id)?.image_url} 
+                  url={config.custom_background_url || ASSETS.find(a => a.id === config.background_id)?.image_url} 
                   x={0} y={0} width={template.size_w} height={template.size_h} 
                 />
 

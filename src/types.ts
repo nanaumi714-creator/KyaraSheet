@@ -49,6 +49,7 @@ export interface Asset {
 
 export interface LayerConfig {
   background_id: string;
+  custom_background_url?: string;
   character: {
     id: string;
     position: { x: number; y: number };
